@@ -26,6 +26,8 @@ async fn main() {
 
     discord::register_commands().await;
 
+    tokio::spawn(down::down_detect_loop());
+
     let state = Arc::new(state::AppState {
         session_store: std::sync::Mutex::new(None),
     });
