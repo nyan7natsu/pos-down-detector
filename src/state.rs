@@ -1,5 +1,6 @@
 pub struct LeaseObject {
     pub lease_id: String,
+    pub lease_label: String,
     pub expiration_time: std::time::Instant,
 }
 

@@ -9,6 +9,7 @@ use std::sync::Arc;
 #[derive(Deserialize)]
 struct LeaseRequest {
     lease_id: String,
+    lease_label: String,
 }
 
 async fn lease_acquire(
@@ -24,6 +25,7 @@ async fn lease_acquire(
         let expiration_time = std::time::Instant::now() + std::time::Duration::from_secs(30);
         *session_store = Some(crate::state::LeaseObject {
             lease_id: lease_id,
+            lease_label: payload.lease_label,
             expiration_time,
         });
         return Ok(StatusCode::OK);
@@ -36,6 +38,7 @@ async fn lease_acquire(
         let expiration_time = std::time::Instant::now() + std::time::Duration::from_secs(30);
         *session_store = Some(crate::state::LeaseObject {
             lease_id: lease_id,
+            lease_label: payload.lease_label,
             expiration_time,
         });
         return Ok(StatusCode::OK);
@@ -78,8 +81,8 @@ async fn lease_status(State(state): State<Arc<AppState>>) -> String {
             .as_ref()
             .map(|lease| {
                 format!(
-                    "Lease ID (hash): {:?}, Expiration Time: {:?}",
-                    lease.lease_id, lease.expiration_time
+                    "Lease ID (hash): {:?}\nLease Label: {:?}\nExpiration Time: {:?}",
+                    lease.lease_id, lease.lease_label, lease.expiration_time
                 )
             })
             .unwrap_or_else(|| "No lease information available.".to_string())
