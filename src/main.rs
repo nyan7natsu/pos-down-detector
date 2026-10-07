@@ -29,7 +29,7 @@ async fn main() {
     tokio::spawn(down::down_detect_loop());
 
     let state = Arc::new(state::AppState {
-        session_store: std::sync::Mutex::new(None),
+        session_store: std::sync::Mutex::new(std::collections::HashMap::new()),
     });
 
     let app = Router::new()

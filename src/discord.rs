@@ -11,7 +11,10 @@ use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use lazy_static::lazy_static;
 use std::sync::Arc;
 use twilight_model::{
-    application::interaction::{Interaction, InteractionData, InteractionType},
+    application::interaction::{
+        Interaction, InteractionData, InteractionType,
+        application_command::{CommandData, CommandOptionValue},
+    },
     channel::message::MessageFlags,
     http::interaction::{InteractionResponse, InteractionResponseData, InteractionResponseType},
 };
@@ -51,7 +54,13 @@ pub async fn register_commands() {
         let commands = vec![serde_json::json!({
             "name": "force",
             "type": 1,
-            "description": "Force release the lease"
+            "description": "Force release the lease",
+            "options": [{
+                "type": 3,
+                "name": "service_id",
+                "description": "Service ID whose lease to release",
+                "required": true
+            }]
         })];
 
         let response = client
@@ -71,17 +80,45 @@ pub async fn register_commands() {
     }
 }
 
-async fn handle_force(_interaction: &Interaction, state: &Arc<AppState>) -> InteractionResponse {
-    let mut session_store = state.session_store.lock().unwrap();
-    *session_store = None;
+fn get_string_option(data: &CommandData, name: &str) -> Option<String> {
+    data.options
+        .iter()
+        .find(|o| o.name == name)
+        .and_then(|o| match &o.value {
+            CommandOptionValue::String(s) => Some(s.clone()),
+            _ => None,
+        })
+}
 
+fn ephemeral(content: &str) -> InteractionResponse {
     InteractionResponse {
         kind: InteractionResponseType::ChannelMessageWithSource,
         data: Some(InteractionResponseData {
-            content: Some("Lease has been forcefully released!!!".to_string()),
+            content: Some(content.to_string()),
             flags: Some(MessageFlags::EPHEMERAL),
             ..Default::default()
         }),
+    }
+}
+
+async fn handle_force(interaction: &Interaction, state: &Arc<AppState>) -> InteractionResponse {
+    let Some(InteractionData::ApplicationCommand(data)) = &interaction.data else {
+        return ephemeral("Invalid command data");
+    };
+    let Some(service_id) = get_string_option(data, "service_id") else {
+        return ephemeral("service_id is required");
+    };
+
+    let removed = {
+        let mut store = state.session_store.lock().unwrap();
+        store.remove(&service_id)
+    };
+
+    match removed {
+        Some(_) => ephemeral(&format!(
+            "Lease for `{service_id}` has been forcefully released."
+        )),
+        None => ephemeral(&format!("No active lease for `{service_id}`.")),
     }
 }
 
