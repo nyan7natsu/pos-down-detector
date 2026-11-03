@@ -1,7 +1,7 @@
 // 多分ここに死活監視の何かを作る
 use lazy_static::lazy_static;
 use std::collections::HashMap;
-use tokio::time::{Duration, interval};
+use tokio::time::{Duration, interval, sleep};
 
 lazy_static! {
     static ref WEBHOOK_URL: String =
@@ -34,7 +34,7 @@ async fn send_discord_notification(title: &str, message: &str, color: u32) {
         .expect("Failed to send Discord notification");
 
     if !response.status().is_success() {
-        eprintln!(
+        tracing::error!(
             "Failed to send Discord notification: {}",
             response.text().await.unwrap_or_default()
         );
@@ -77,6 +77,9 @@ async fn down_detect(history: &mut HashMap<String, bool>) {
 pub async fn down_detect_loop() {
     let mut down_detect_history: HashMap<String, bool> = HashMap::new();
     let mut ticker = interval(Duration::from_secs(30));
+    tracing::info!("Waiting first 30 seconds before starting down detection loop...");
+    sleep(Duration::from_secs(30)).await;
+    tracing::info!("Down detection loop started.");
     loop {
         ticker.tick().await;
         down_detect(&mut down_detect_history).await;
