@@ -15,13 +15,27 @@ async fn main() {
     // .envファイルを読み込み（エラーは無視）
     let _ = dotenvy::dotenv();
 
-    // トレーシングの初期化
+    // トレーシングの初期化（ターミナルとlogファイルの両方に出力）
+    let file_appender = tracing_appender::rolling::daily("logs", "pos-down-detector.log");
+    let (file_writer, _log_guard) = tracing_appender::non_blocking(file_appender);
+
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "pos-down-detector=debug,tower_http=debug,axum=debug".into()),
+                .unwrap_or_else(|_| "pos_down_detector=debug,tower_http=debug,axum=debug".into()),
         )
-        .with(tracing_subscriber::fmt::layer())
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_file(true)
+                .with_line_number(true),
+        )
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_ansi(false)
+                .with_file(true)
+                .with_line_number(true)
+                .with_writer(file_writer),
+        )
         .init();
 
     discord::register_commands().await;
