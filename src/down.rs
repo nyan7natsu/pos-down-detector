@@ -1,4 +1,4 @@
-// 多分ここに死活監視の何かを作る
+// 死活監視
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use tokio::time::{Duration, interval, sleep};
@@ -66,7 +66,13 @@ async fn down_detect(history: &mut HashMap<String, bool>) {
                 }
             }
             Err(err) => {
-                let message = format!("Service URL: {}\nStatus Code: XXX\nDetail: {}", url, err);
+                let status_code: u16 = err.status().map(|s| s.as_u16()).unwrap_or(0);
+                let message = format!(
+                    "Service URL: {}\nStatus Code: {}\nDetail: {}",
+                    url,
+                    status_code,
+                    err
+                );
                 history.insert(url.clone(), false);
                 send_discord_notification("Service Down Detected!", &message, 0xff0000).await;
             }
